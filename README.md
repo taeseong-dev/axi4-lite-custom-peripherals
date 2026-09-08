@@ -24,20 +24,13 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
 - [System Architecture](#system-architecture)
 - [AXI4-Lite Interface](#axi4-lite-interface)
   - [AXI4-Lite Protocol](#axi4-lite-protocol)
-  - [Write / Read Transaction](#write--read-transaction)
+  - [Write Transfer](#write-transfer)
+  - [Read Transfer](#read-transfer)
 - [I2C Master](#i2c-master)
   - [I2C Architecture](#i2c-architecture)
   - [I2C Register Map](#i2c-register-map)
-  - [I2C Master FSM](#i2c-master-fsm)
-  - [I2C Software Driver](#i2c-software-driver)
-  - [I2C FPGA Test](#i2c-fpga-test)
-- [SPI Master](#spi-master)
-  - [SPI Architecture](#spi-architecture)
-  - [SPI Register Map](#spi-register-map)
-  - [SPI Master FSM](#spi-master-fsm)
-  - [SPI Software Driver](#spi-software-driver)
-  - [SPI FPGA Test](#spi-fpga-test)
-
+  - [I2C Software Architecture](#i2c-software-architecture)
+  - [I2C Verification](#i2c-verification)
 ---
 
 ## System Architecture
@@ -121,7 +114,7 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 |  |  | `[1] WRITE` | WRITE Command |
 |  |  | `[2] READ` | READ Command |
 |  |  | `[3] STOP` | STOP Command |
-|  |  | `[4] ACK_IN` | Read 동작 후 ACK / NACK 설정 |
+|  |  | `[4] ACK_IN` | Read Data 수신 후 ACK / NACK 설정 |
 |  |  | `[5] INTR_EN` | Interrupt Enable |
 |  |  | `[23:8] CLK_DIV` | I2C Clock Divider |
 
@@ -130,7 +123,7 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 
 ### I2C Software Architecture
 
-Vitis의 C 코드는 Application, Driver, HAL, HW의 4개 Layer로 구성하였습니다.
+Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 구분하였습니다.
 
 <img src="images/axi_i2c_layer.png" width="700">
 
@@ -139,9 +132,11 @@ Vitis의 C 코드는 Application, Driver, HAL, HW의 4개 Layer로 구성하였�
 - **HAL** : GPIO, Timer, Interrupt, I2C Hardware 접근
 - **HW** : Switch, Button, FND, Timer, Interrupt Controller 및 I2C Master
 
-### Simulation
+### I2C Verification
 
-#### I2C Write Simulation
+#### Simulation
+
+##### I2C Write Simulation
 
 <img src="images/axi_i2c_write_sim.jpg" width="900">
 
@@ -165,7 +160,7 @@ AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Writ
 > `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
 
 
-#### I2C Read Simulation
+##### I2C Read Simulation
 
 <img src="images/axi_i2c_read_sim.jpg" width="900">
 
