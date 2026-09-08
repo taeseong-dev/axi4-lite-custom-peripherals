@@ -163,3 +163,31 @@ AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Writ
 | 12 | `CR` Write | `0x0000_0228` | `STOP` Bit Set → Write Transaction 종료 |
 
 > `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
+
+
+#### I2C Read Simulation
+
+<img src="images/axi_i2c_read_sim.jpg" width="900">
+
+AXI4-Lite Register 접근을 통해 Slave Address `7'h12`로부터 1 Byte Data를 Read하고, 각 단계의 Handshake를 확인하였습니다.
+
+| 번호 | Register Access | Value | 동작 |
+|:---:|:---|:---|:---|
+| 1 | `CR` Read | `0x0000_0220` | 기존 `CLK_DIV`, `INTR_EN` 설정값 Read |
+| 2 | `CR` Write | `0x0000_0221` | `START` Bit Set → START Command 발생 |
+| 3 | `TXDR` Write | `0x0000_0025` | Slave Address `7'h12` + Read Bit `1` 저장 |
+| 4 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 5 | `CR` Write | `0x0000_0222` | `WRITE` Bit Set → Slave Address + Read 전송 |
+| 6 | `SR` Read | `0x0000_0001` | `ACK_OUT = 0`을 확인하여 Slave Address ACK 확인 |
+| 7 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 8 | `CR` Write | `0x0000_0230` | `ACK_IN = 1` 설정 → 마지막 Byte 수신 후 NACK 설정 |
+| 9 | `CR` Read | `0x0000_0230` | `ACK_IN`이 설정된 CR 값 Read |
+| 10 | `CR` Write | `0x0000_0234` | `READ` Bit Set → 1 Byte Data 수신 |
+| 11 | `RXDR` Read | `0x0000_0055` | 수신 Data `0x55` 확인 |
+| 12 | `CR` Read | `0x0000_0230` | 기존 CR 설정값 Read |
+| 13 | `CR` Write | `0x0000_0238` | `STOP` Bit Set → Read Transaction 종료 |
+
+Slave Address는 `7'h12`이며, Read Bit `1`을 포함한 `0x25`를 전송하였습니다.  
+1 Byte Read이므로 `ACK_IN = 1`로 설정하여 Data 수신 후 NACK을 전송하고, `RXDR`에서 `0x55`가 정상적으로 수신된 것을 확인하였습니다.
+
+> `START`, `WRITE`, `READ`, `STOP` Command는 `CR |= Command Bit` 형태로 설정하므로 기존 Control Register 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
