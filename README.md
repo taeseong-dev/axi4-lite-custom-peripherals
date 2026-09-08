@@ -92,3 +92,74 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 - `RVALID` / `RREADY` Handshake를 통해 Read Data와 Response 전달
 
 > `slv_reg_rden`은 Vivado AXI4-Lite Slave Interface 내부에서 Register Read 시 사용되는 신호입니다.
+
+
+
+## I2C Master
+
+### I2C Architecture
+
+<img src="images/axi_i2c_bd.png" width="800">
+
+- AXI4-Lite Slave Interface의 Register를 통해 I2C Master 제어
+- `CR` Register를 통해 START / WRITE / READ / STOP Command 및 제어값 전달
+- `TXDR` / `RXDR` Register를 통해 송수신 Data 전달
+- `SR` Register를 통해 BUSY 및 ACK 상태 확인
+- I2C Master의 `done`과 `intr_en`을 통해 `i2c_intr` 생성
+- `SCL`, `SDA`를 통해 외부 I2C Slave와 통신
+
+
+### I2C Register Map
+
+| Offset | Register | Bit | Description |
+|:---:|:---:|:---|:---|
+| `0x00` | `SR` | `[0] BUSY` | I2C Master 동작 상태 |
+|  |  | `[1] ACK_OUT` | Slave ACK / NACK 상태 |
+| `0x04` | `TXDR` | `[7:0] TX_DATA` | 송신 Data |
+| `0x08` | `RXDR` | `[7:0] RX_DATA` | 수신 Data |
+| `0x0C` | `CR` | `[0] START` | START Command |
+|  |  | `[1] WRITE` | WRITE Command |
+|  |  | `[2] READ` | READ Command |
+|  |  | `[3] STOP` | STOP Command |
+|  |  | `[4] ACK_IN` | Read 동작 후 ACK / NACK 설정 |
+|  |  | `[5] INTR_EN` | Interrupt Enable |
+|  |  | `[23:8] CLK_DIV` | I2C Clock Divider |
+
+- `START`, `WRITE`, `READ`, `STOP` Bit는 Command 실행 시 Pulse 형태로 사용
+- `INTR_EN`이 활성화된 상태에서 Command 완료 시 Interrupt 발생
+
+### I2C Software Architecture
+
+Vitis의 C 코드는 Application, Driver, HAL, HW의 4개 Layer로 구성하였습니다.
+
+<img src="images/axi_i2c_layer.png" width="700">
+
+- **Application** : Button / Switch 입력을 기반으로 I2C Write / Read Test 수행
+- **Driver** : Switch, Button, FND 및 I2C 동작 제어
+- **HAL** : GPIO, Timer, Interrupt, I2C Hardware 접근
+- **HW** : Switch, Button, FND, Timer, Interrupt Controller 및 I2C Master
+
+### Simulation
+
+#### I2C Write Simulation
+
+<img src="images/axi_i2c_write_sim.jpg" width="900">
+
+AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Write하고, 각 단계의 Handshake를 확인하였습니다.
+
+| 번호 | Register Access | Value | 동작 |
+|:---:|:---|:---|:---|
+| 1 | `CR` Write | `0x0000_0220` | `CLK_DIV = 2`, `INTR_EN = 1` 설정 |
+| 2 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 3 | `CR` Write | `0x0000_0221` | `START` Bit Set → START Command |
+| 4 | `TXDR` Write | `0x0000_0024` | Slave Address `7'h12` + Write Bit `0` 저장 |
+| 5 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 6 | `CR` Write | `0x0000_0222` | `WRITE` Bit Set → Slave Address 전송 |
+| 7 | `SR` Read | `0x0000_0001` | `BUSY = 1`, `ACK_OUT = 0` 확인 |
+| 8 | `TXDR` Write | `0x0000_0055` | Write Data `0x55` 저장 |
+| 9 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 10 | `CR` Write | `0x0000_0222` | `WRITE` Bit Set → Data `0x55` 전송 |
+| 11 | `CR` Read | `0x0000_0220` | 기존 CR 설정값 Read |
+| 12 | `CR` Write | `0x0000_0228` | `STOP` Bit Set → Write Transaction 종료 |
+
+> `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
