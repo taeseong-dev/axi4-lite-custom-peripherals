@@ -191,3 +191,63 @@ Slave Address는 `7'h12`이며, Read Bit `1`을 포함한 `0x25`를 전송하였
 1 Byte Read이므로 `ACK_IN = 1`로 설정하여 Data 수신 후 NACK을 전송하고, `RXDR`에서 `0x55`가 정상적으로 수신된 것을 확인하였습니다.
 
 > `START`, `WRITE`, `READ`, `STOP` Command는 `CR |= Command Bit` 형태로 설정하므로 기존 Control Register 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
+
+#### FPGA Test
+
+I2C Master FPGA와 Slave FPGA를 연결하여 실제 I2C Write / Read 동작을 확인하였습니다.
+
+##### FPGA Operation
+
+- Slave Address : `7'h12`
+- Write `0x03` → Read `0x03`
+- Write `0x1F` → Read `0x1F`
+- Write / Read 완료 후 ACK 상태와 수신 Data 확인
+- Read Data를 FND에 출력하여 실제 수신값 확인
+
+https://github.com/user-attachments/assets/ae1e2d9e-f554-4e98-8dd6-002f88803318
+
+<img src="images/i2c_logic_analyzer_07.png" width="400">
+
+- `0x03` Write 후 동일한 `0x03` Read 확인
+- `0x1F` Write 후 동일한 `0x1F` Read 확인
+- 각 Write / Read 동작에서 Slave Address `0x12`에 대한 ACK 확인
+
+##### Logic Analyzer
+
+Logic Analyzer를 통해 `SCL`, `SDA` 신호와 실제 I2C Write / Read Transaction을 확인하였습니다.
+
+- Slave Address `0x12`에 `0x03` Write → Address / Data ACK 확인
+- Slave Address `0x12`에서 `0x03` Read → Data `0x03` 수신 및 마지막 Byte NACK 확인
+- Slave Address `0x12`에 `0x1F` Write → Address / Data ACK 확인
+- Slave Address `0x12`에서 `0x1F` Read → Data `0x1F` 수신 및 마지막 Byte NACK 확인
+
+<details>
+<summary>Logic Analyzer 결과 보기</summary>
+
+<br>
+
+**Write `0x03`**
+
+<img src="images/i2c_logic_analyzer_01.png" width="900">
+
+**Read `0x03`**
+
+<img src="images/i2c_logic_analyzer_02.png" width="900">
+
+**Write `0x1F`**
+
+<img src="images/i2c_logic_analyzer_03.png" width="900">
+
+**Read `0x1F`**
+
+<img src="images/i2c_logic_analyzer_04.png" width="900">
+
+**Write / Read Decode Result (`0x03`)**
+
+<img src="images/i2c_logic_analyzer_05.png" width="600">
+
+**Write / Read Decode Result (`0x1F`)**
+
+<img src="images/i2c_logic_analyzer_06.png" width="600">
+
+</details>
