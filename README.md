@@ -38,11 +38,11 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
 <img src="images/axi_architecture.png" width="700">
 
 - MicroBlaze 기반 시스템에서 AXI4-Lite를 통해 Memory-Mapped Peripheral의 Register에 접근
-- MicroBlaze와 GPIO, Timer, I2C Master, AXI Interrupt Controller는 AXI Interconnect를 통해 연결
+- MicroBlaze와 GPIO, Timer, Custom Peripheral, AXI Interrupt Controller는 AXI Interconnect를 통해 연결
+- Custom Peripheral에는 I2C 또는 SPI Master IP를 연결하여 사용
 - GPIO를 통해 Switch / Button 입력을 읽고 FND 출력 제어
-- Timer와 I2C Master에서 발생한 IRQ를 AXI Interrupt Controller에 연결
+- Timer와 Custom Peripheral에서 발생한 IRQ를 AXI Interrupt Controller에 연결
 - Vivado의 AXI Interrupt Controller IP를 통해 Peripheral Interrupt를 MicroBlaze에서 처리
-- I2C Master의 `SCL`, `SDA`를 통해 외부 I2C Slave와 통신
 
 ## AXI4-Lite Interface
 
@@ -90,7 +90,14 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 
 ## I2C Master
 
-### I2C Architecture
+### I2C System Architecture
+
+<img src="images/axi_i2c_architecture.png" width="700">
+
+- Custom Peripheral에 I2C Master IP를 연결하여 구성
+- `SCL`, `SDA`를 통해 외부 I2C Slave와 통신
+
+### I2C Block Diagram
 
 <img src="images/axi_i2c_bd.png" width="800">
 
