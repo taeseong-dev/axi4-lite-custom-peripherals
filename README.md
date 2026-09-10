@@ -1,7 +1,9 @@
-# AXI4-Lite Custom Peripheral Design
+# AXI4-Lite 기반 SPI / I2C Peripheral 설계 및 FPGA 검증
 
-Vivado의 AXI4-Lite Slave Interface에 I2C / SPI Master IP를 연결하고, <br>
-Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝트입니다.
+Vivado에서 생성한 AXI4-Lite Slave Interface에 SPI / I2C Master IP를 연결하고,
+MicroBlaze에서 C 코드로 각 Peripheral의 Register를 제어한 프로젝트입니다.
+
+Testbench Simulation 및 Master FPGA와 Slave FPGA 간 통신을 통해 Register Access, Interrupt 및 실제 송수신 동작을 검증하였습니다.
 
 ---
 
@@ -9,18 +11,21 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
 
 | 항목 | 내용 |
 |:---|:---|
+| Period | 2026.04.21 ~ 2026.05.07 |
 | Language | Verilog, SystemVerilog, C |
 | CPU | MicroBlaze |
 | Bus | AMBA AXI4-Lite |
-| Peripheral | I2C Master, SPI Master |
-| Interface | I2C, SPI |
-| Development Environment | Vivado, Vitis |
-| FPGA Board | Basys3 |
+| Peripheral | SPI Master, I2C Master |
+| Interface | SPI, I2C |
+| Development Environment | Vivado 2020.2, Vitis 2020.2 |
+| Verification | Testbench Simulation, FPGA Test, Logic Analyzer |
+| FPGA Board | Basys3 (Master / Slave) |
 
 ---
 
 ## Contents
 
+- [Project Structure](#project-structure)
 - [System Architecture](#system-architecture)
 - [AXI4-Lite Interface](#axi4-lite-interface)
   - [AXI4-Lite Protocol](#axi4-lite-protocol)
@@ -38,6 +43,24 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
   - [SPI Register Map](#spi-register-map)
   - [SPI Software Architecture](#spi-software-architecture)
   - [SPI Verification](#spi-verification)
+
+---
+
+## Project Structure
+
+```text
+src/
+├─ i2c/
+│  ├─ c/       # MicroBlaze Application / Driver / HAL
+│  ├─ fpga/    # Master Block Design / Slave RTL / Constraints
+│  ├─ rtl/     # AXI4-Lite I2C Peripheral RTL
+│  └─ tb/      # AXI4-Lite I2C Testbench
+└─ spi/
+   ├─ c/       # MicroBlaze Application / Driver / HAL
+   ├─ fpga/    # Master Block Design / Slave RTL / Constraints
+   ├─ rtl/     # AXI4-Lite SPI Peripheral RTL
+   └─ tb/      # AXI4-Lite SPI Testbench
+```
 
 ---
 
@@ -154,6 +177,11 @@ Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 
 
 AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Write하고, 각 단계의 Handshake를 확인하였습니다.
 
+<details>
+<summary>Register Access Sequence 보기</summary>
+
+<br>
+
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
 | 1 | `CR` Write | `0x0000_0220` | `CLK_DIV = 2`, `INTR_EN = 1` 설정 |
@@ -171,11 +199,18 @@ AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Writ
 
 > `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
 
+</details>
+
 ##### I2C Read Simulation
 
 <img src="images/axi_i2c_read_sim.jpg" width="900">
 
 AXI4-Lite Register 접근을 통해 Slave Address `7'h12`로부터 1 Byte Data를 Read하고, 각 단계의 Handshake를 확인하였습니다.
+
+<details>
+<summary>Register Access Sequence 보기</summary>
+
+<br>
 
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
@@ -197,6 +232,8 @@ Slave Address는 `7'h12`이며, Read Bit `1`을 포함한 `0x25`를 전송하였
 1 Byte Read이므로 `ACK_IN = 1`로 설정하여 Data 수신 후 NACK을 전송하고, `RXDR`에서 `0x55`가 정상적으로 수신된 것을 확인하였습니다.
 
 > `START`, `WRITE`, `READ`, `STOP` Command는 `CR |= Command Bit` 형태로 설정하므로 기존 Control Register 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
+
+</details>
 
 #### FPGA Test
 
@@ -312,6 +349,11 @@ Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 
 
 AXI4-Lite Register 접근을 통해 SPI Mode 0에서 1 Byte Full-Duplex Transfer를 수행하고, Register 접근과 송수신 Data를 확인하였습니다.
 
+<details>
+<summary>Register Access Sequence 보기</summary>
+
+<br>
+
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
 | 1 | `CR` Write | `0x0000_0408` | `CLK_DIV = 4`, `INTR_EN = 1`, Mode 0 설정 |
@@ -325,6 +367,8 @@ AXI4-Lite Register 접근을 통해 SPI Mode 0에서 1 Byte Full-Duplex Transfer
 | 9 | `RXDR` Read | `0x0000_00A5` | 두 번째 수신 Data `0xA5` 확인 |
 
 > `CR |= START` 형태로 Transfer를 시작하므로 기존 `CLK_DIV`, `INTR_EN`, `CPOL`, `CPHA` 설정값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
+
+</details>
 
 SPI는 Full-Duplex 방식으로 동작하므로 MOSI를 통한 송신과 MISO를 통한 수신이 동시에 수행됩니다.
 
