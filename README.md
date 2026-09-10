@@ -9,7 +9,7 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
 
 | 항목 | 내용 |
 |:---|:---|
-| Language | Verilog, C |
+| Language | Verilog, SystemVerilog, C |
 | CPU | MicroBlaze |
 | Bus | AMBA AXI4-Lite |
 | Peripheral | I2C Master, SPI Master |
@@ -38,6 +38,7 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
   - [SPI Register Map](#spi-register-map)
   - [SPI Software Architecture](#spi-software-architecture)
   - [SPI Verification](#spi-verification)
+
 ---
 
 ## System Architecture
@@ -57,7 +58,7 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
 
 AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interface입니다.
 
-본 프로젝트에서는 Vivado에서 생성한 AXI4-Lite Slave Interface를 사용하여 Register와 I2C Master IP를 연결하였습니다.
+본 프로젝트에서는 Vivado에서 생성한 AXI4-Lite Slave Interface를 사용하여 Register와 I2C / SPI Master IP를 연결하였습니다.
 
 <img src="images/axi_interface.png" width="700">
 
@@ -93,8 +94,6 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 
 > `slv_reg_rden`은 Vivado AXI4-Lite Slave Interface 내부에서 Register Read 시 사용되는 신호입니다.
 
-
-
 ## I2C Master
 
 ### I2C System Architecture
@@ -114,7 +113,6 @@ AXI4-Lite는 Memory-Mapped Peripheral의 Register 접근에 사용되는 Interfa
 - `SR` Register를 통해 BUSY 및 ACK 상태 확인
 - I2C Master의 `done`과 `intr_en`을 통해 `i2c_intr` 생성
 - `SCL`, `SDA`를 통해 외부 I2C Slave와 통신
-
 
 ### I2C Register Map
 
@@ -172,7 +170,6 @@ AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Writ
 | 12 | `CR` Write | `0x0000_0228` | `STOP` Bit Set → Write Transaction 종료 |
 
 > `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
-
 
 ##### I2C Read Simulation
 
@@ -264,7 +261,7 @@ Logic Analyzer를 통해 `SCL`, `SDA` 신호와 실제 I2C Write / Read Transact
 - Custom Peripheral에 SPI Master IP를 연결하여 구성
 - MicroBlaze에서 AXI4-Lite를 통해 SPI Master의 Register에 접근
 - `SCLK`, `MOSI`, `MISO`, `CS_n`을 통해 외부 SPI Slave와 Full-Duplex 통신
-- SPI Master에서 발생한 Interrupt를 AXI Interrupt Controller를 통해 MicroBlaze에서 처리## SPI Master
+- SPI Master에서 발생한 Interrupt를 AXI Interrupt Controller를 통해 MicroBlaze에서 처리
 
 ### SPI Block Diagram
 
@@ -340,7 +337,6 @@ SPI는 Full-Duplex 방식으로 동작하므로 MOSI를 통한 송신과 MISO를
 Slave는 Master가 전송한 `0xA5`를 저장하고, 두 번째 Transfer에서 해당 Data를 MISO를 통해 전송하므로 Master에서 `0xA5`가 수신된 것을 확인하였습니다.
 
 각 Transfer 완료 시 `spi_intr`이 발생하여 SPI Transfer 완료를 확인하였습니다.
-
 
 #### FPGA Test
 
