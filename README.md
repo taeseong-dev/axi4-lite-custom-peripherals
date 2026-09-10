@@ -27,10 +27,17 @@ Vitis에서 작성한 C 코드로 MicroBlaze에서 각 IP를 제어한 프로젝
   - [Write Transfer](#write-transfer)
   - [Read Transfer](#read-transfer)
 - [I2C Master](#i2c-master)
-  - [I2C Architecture](#i2c-architecture)
+  - [I2C System Architecture](#i2c-system-architecture)
+  - [I2C Block Diagram](#i2c-block-diagram)
   - [I2C Register Map](#i2c-register-map)
   - [I2C Software Architecture](#i2c-software-architecture)
   - [I2C Verification](#i2c-verification)
+- [SPI Master](#spi-master)
+  - [SPI System Architecture](#spi-system-architecture)
+  - [SPI Block Diagram](#spi-block-diagram)
+  - [SPI Register Map](#spi-register-map)
+  - [SPI Software Architecture](#spi-software-architecture)
+  - [SPI Verification](#spi-verification)
 ---
 
 ## System Architecture
@@ -208,12 +215,6 @@ I2C Master FPGA와 Slave FPGA를 연결하여 실제 I2C Write / Read 동작을 
 
 https://github.com/user-attachments/assets/ae1e2d9e-f554-4e98-8dd6-002f88803318
 
-<img src="images/i2c_logic_analyzer_07.png" width="400">
-
-- `0x03` Write 후 동일한 `0x03` Read 확인
-- `0x1F` Write 후 동일한 `0x1F` Read 확인
-- 각 Write / Read 동작에서 Slave Address `0x12`에 대한 ACK 확인
-
 ##### Logic Analyzer
 
 Logic Analyzer를 통해 `SCL`, `SDA` 신호와 실제 I2C Write / Read Transaction을 확인하였습니다.
@@ -223,8 +224,16 @@ Logic Analyzer를 통해 `SCL`, `SDA` 신호와 실제 I2C Write / Read Transact
 - Slave Address `0x12`에 `0x1F` Write → Address / Data ACK 확인
 - Slave Address `0x12`에서 `0x1F` Read → Data `0x1F` 수신 및 마지막 Byte NACK 확인
 
+**Write / Read Decode Result (`0x03`)**
+
+<img src="images/i2c_logic_analyzer_05.png" width="600">
+
+**Write / Read Decode Result (`0x1F`)**
+
+<img src="images/i2c_logic_analyzer_06.png" width="600">
+
 <details>
-<summary>Logic Analyzer 결과 보기</summary>
+<summary>상세 파형 보기</summary>
 
 <br>
 
@@ -244,12 +253,148 @@ Logic Analyzer를 통해 `SCL`, `SDA` 신호와 실제 I2C Write / Read Transact
 
 <img src="images/i2c_logic_analyzer_04.png" width="900">
 
-**Write / Read Decode Result (`0x03`)**
+</details>
 
-<img src="images/i2c_logic_analyzer_05.png" width="600">
+## SPI Master
 
-**Write / Read Decode Result (`0x1F`)**
+### SPI System Architecture
 
-<img src="images/i2c_logic_analyzer_06.png" width="600">
+<img src="images/axi_spi_architecture.png" width="700">
+
+- Custom Peripheral에 SPI Master IP를 연결하여 구성
+- MicroBlaze에서 AXI4-Lite를 통해 SPI Master의 Register에 접근
+- `SCLK`, `MOSI`, `MISO`, `CS_n`을 통해 외부 SPI Slave와 Full-Duplex 통신
+- SPI Master에서 발생한 Interrupt를 AXI Interrupt Controller를 통해 MicroBlaze에서 처리## SPI Master
+
+### SPI Block Diagram
+
+<img src="images/axi_spi_bd.png" width="800">
+
+- AXI4-Lite Slave Interface의 Register를 통해 SPI Master 제어
+- `CR` Register를 통해 START, CPOL, CPHA, Interrupt Enable 및 Clock Divider 설정
+- `TXDR` / `RXDR` Register를 통해 송수신 Data 전달
+- `SR` Register를 통해 BUSY 상태 확인
+- SPI Master의 `done`과 `intr_en`을 통해 `spi_intr` 생성
+- `SCLK`, `MOSI`, `MISO`, `CS_n`을 통해 외부 SPI Slave와 통신
+
+### SPI Register Map
+
+| Offset | Register | Bit | Description |
+|:---:|:---:|:---|:---|
+| `0x00` | `SR` | `[0] BUSY` | SPI Master 동작 상태 |
+| `0x04` | `TXDR` | `[7:0] TX_DATA` | 송신 Data |
+| `0x08` | `RXDR` | `[7:0] RX_DATA` | 수신 Data |
+| `0x0C` | `CR` | `[0] START` | SPI Transfer Start Command |
+|  |  | `[1] CPOL` | Clock Polarity 설정 |
+|  |  | `[2] CPHA` | Clock Phase 설정 |
+|  |  | `[3] INTR_EN` | Interrupt Enable |
+|  |  | `[23:8] CLK_DIV` | SPI Clock Divider |
+
+- `START` Bit는 SPI Transfer 시작 시 Pulse 형태로 사용
+- `CPOL`, `CPHA` 설정을 통해 SPI Mode 설정
+- `INTR_EN`이 활성화된 상태에서 SPI Transfer 완료 시 Interrupt 발생
+- `CLK_DIV` 값에 따라 `SCLK` 주파수 설정
+- `SCLK` 주파수는 `f_clk / (2 × (CLK_DIV + 1))`로 설정
+
+### SPI Software Architecture
+
+Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 구분하였습니다.
+
+<img src="images/axi_spi_layer.png" width="700">
+
+- **Application** : Button / Switch 입력을 기반으로 SPI Transfer Test 수행
+- **Driver** : Switch, Button, FND 및 SPI Transfer 동작 제어
+- **HAL** : GPIO, Timer, Interrupt, SPI Hardware 접근
+- **HW** : Switch, Button, FND, Timer, Interrupt Controller 및 SPI Master
+
+### SPI Verification
+
+#### Simulation
+
+<img src="images/axi_spi_sim.jpg" width="900">
+
+AXI4-Lite Register 접근을 통해 SPI Mode 0에서 1 Byte Full-Duplex Transfer를 수행하고, Register 접근과 송수신 Data를 확인하였습니다.
+
+| 번호 | Register Access | Value | 동작 |
+|:---:|:---|:---|:---|
+| 1 | `CR` Write | `0x0000_0408` | `CLK_DIV = 4`, `INTR_EN = 1`, Mode 0 설정 |
+| 2 | `TXDR` Write | `0x0000_00A5` | 첫 번째 송신 Data `0xA5` 저장 |
+| 3 | `CR` Read | `0x0000_0408` | 기존 CR 설정값 Read |
+| 4 | `CR` Write | `0x0000_0409` | `START` Bit Set → 첫 번째 SPI Transfer 시작 |
+| 5 | `RXDR` Read | `0x0000_0000` | 첫 번째 수신 Data `0x00` 확인 |
+| 6 | `TXDR` Write | `0x0000_003C` | 두 번째 송신 Data `0x3C` 저장 |
+| 7 | `CR` Read | `0x0000_0408` | 기존 CR 설정값 Read |
+| 8 | `CR` Write | `0x0000_0409` | `START` Bit Set → 두 번째 SPI Transfer 시작 |
+| 9 | `RXDR` Read | `0x0000_00A5` | 두 번째 수신 Data `0xA5` 확인 |
+
+> `CR |= START` 형태로 Transfer를 시작하므로 기존 `CLK_DIV`, `INTR_EN`, `CPOL`, `CPHA` 설정값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
+
+SPI는 Full-Duplex 방식으로 동작하므로 MOSI를 통한 송신과 MISO를 통한 수신이 동시에 수행됩니다.
+
+| Transfer | Master TX | Slave RX | Master RX |
+|:---:|:---:|:---:|:---:|
+| #1 | `0xA5` | `0xA5` | `0x00` |
+| #2 | `0x3C` | `0x3C` | `0xA5` |
+
+첫 번째 Transfer에서는 Slave의 초기 Data가 `0x00`이므로 Master가 `0x00`을 수신하였습니다.  
+Slave는 Master가 전송한 `0xA5`를 저장하고, 두 번째 Transfer에서 해당 Data를 MISO를 통해 전송하므로 Master에서 `0xA5`가 수신된 것을 확인하였습니다.
+
+각 Transfer 완료 시 `spi_intr`이 발생하여 SPI Transfer 완료를 확인하였습니다.
+
+
+#### FPGA Test
+
+SPI Master FPGA와 Slave FPGA를 연결하여 실제 SPI Full-Duplex 통신을 확인하였습니다.
+
+##### FPGA Operation
+
+- SPI Mode : Mode 0 (`CPOL = 0`, `CPHA = 0`)
+- Slave 초기 Data : `0x00`
+- Switch 값을 Master의 송신 Data로 설정하고 Button 입력 시 SPI Transfer 수행
+- Slave는 수신한 Data를 저장하고, 다음 Transfer에서 이전 수신 Data를 MISO를 통해 전송
+- Master / Slave의 수신 Data를 FND에 출력하여 실제 송수신값 확인
+
+| Transfer | Master TX | Master RX | Slave RX |
+|:---:|:---:|:---:|:---:|
+| #1 | `0x01` | `0x00` | `0x01` |
+| #2 | `0x03` | `0x01` | `0x03` |
+| #3 | `0x07` | `0x03` | `0x07` |
+| #4 | `0x0F` | `0x07` | `0x0F` |
+
+https://github.com/user-attachments/assets/896fdaae-3cfa-455f-a7ca-9e6a758ba4ba
+
+##### Logic Analyzer
+
+Logic Analyzer를 통해 `SCLK`, `MOSI`, `MISO`, `CS_n` 신호와 SPI Mode 0의 Full-Duplex Transfer를 확인하였습니다.
+
+- `CS_n`이 Low인 동안 8개의 `SCLK`를 통해 1 Byte Data 송수신
+- MOSI를 통해 Master의 송신 Data가 Slave에 전달되는 것을 확인
+- MISO를 통해 Slave에 저장된 이전 Data가 Master로 전달되는 것을 확인
+- 연속 Transfer에서 `0x01 → 0x03 → 0x07 → 0x0F`를 송신하고 각 수신 Data 확인
+
+**Decode Result**
+
+<img src="images/spi_logic_analyzer_06.png" width="450">
+
+<details>
+<summary>상세 파형 보기</summary>
+
+<br>
+
+**Transfer #1 : Master TX `0x01` / Master RX `0x00`**
+
+<img src="images/spi_logic_analyzer_01.png" width="800">
+
+**Transfer #2 : Master TX `0x03` / Master RX `0x01`**
+
+<img src="images/spi_logic_analyzer_02.png" width="800">
+
+**Transfer #3 : Master TX `0x07` / Master RX `0x03`**
+
+<img src="images/spi_logic_analyzer_03.png" width="800">
+
+**Transfer #4 : Master TX `0x0F` / Master RX `0x07`**
+
+<img src="images/spi_logic_analyzer_04.png" width="800">
 
 </details>
