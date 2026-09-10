@@ -46,24 +46,6 @@ Testbench Simulation 및 Master FPGA와 Slave FPGA 간 통신을 통해 Register
 
 ---
 
-## Project Structure
-
-```text
-src/
-├─ i2c/
-│  ├─ c/       # MicroBlaze Application / Driver / HAL
-│  ├─ fpga/    # Master Block Design / Slave RTL / Constraints
-│  ├─ rtl/     # AXI4-Lite I2C Peripheral RTL
-│  └─ tb/      # AXI4-Lite I2C Testbench
-└─ spi/
-   ├─ c/       # MicroBlaze Application / Driver / HAL
-   ├─ fpga/    # Master Block Design / Slave RTL / Constraints
-   ├─ rtl/     # AXI4-Lite SPI Peripheral RTL
-   └─ tb/      # AXI4-Lite SPI Testbench
-```
-
----
-
 ## System Architecture
 
 <img src="images/axi_architecture.png" width="700">
