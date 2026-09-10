@@ -5,8 +5,9 @@ XIntc IntrController;
 // 1KHz -> 1msec interrupt service routine
 void TMR0_ISR(void *CallbackRef)
 {
-	millis_inc();
-	FND_DispDigit();
+    (void)CallbackRef;
+    millis_inc();
+    FND_DispDigit();
 }
 
 void I2C_ISR(void *CallbackRef)
@@ -15,46 +16,43 @@ void I2C_ISR(void *CallbackRef)
     I2C_Handler();
 }
 
-int SetupInterruptSystem()
+int SetupInterruptSystem(void)
 {
-	int status;
+    int status;
 
-	//2π¯∞˙ 4π¯∏∏ « ø‰ø° µ˚∂Û ∫Ø∞Ê«œ∞Ì, ≥™∏”¡ˆ¥¬ ∫π∫Ÿ ∞°¥…
+    // 1. Interrupt Controller Ï¥àÍ∏∞Ìôî
+    status = XIntc_Initialize(&IntrController, INTC_DEV_ID);
+    if(status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
-	// 1. ¿Œ≈Õ∑¥∆Æ ƒ¡∆Æ∑—∑Ø √ ±‚»≠
-	status = XIntc_Initialize(&IntrController, INTC_DEV_ID);
-	if(status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    // 2. ISR Ïó∞Í≤∞
+    status = XIntc_Connect(&IntrController, TIMER0_INTR_ID, (XInterruptHandler)TMR0_ISR, (void *)0);
+    if(status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
-	// 2. TMR0_ISR «‘ºˆ∏¶ IntcøÕ ø¨∞·
-	status = XIntc_Connect(&IntrController, TIMER0_INTR_ID, (XInterruptHandler)TMR0_ISR, (void *)0);
-	if(status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    status = XIntc_Connect(&IntrController, I2C_INTR_ID, (XInterruptHandler)I2C_ISR, (void *)0);
+    if(status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
-	status = XIntc_Connect(&IntrController, I2C_INTR_ID, (XInterruptHandler)I2C_ISR, (void *)0);
-	if(status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    // 3. Interrupt Controller ÏãúÏûë (Hardware Mode)
+    status = XIntc_Start(&IntrController, XIN_REAL_MODE);
+    if(status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
-	// 3. Interrupt Controller Ω√¿€(Hardware Mode)
-	status = XIntc_Start(&IntrController, XIN_REAL_MODE);
-	if(status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    // 4. Interrupt Channel ÌôúÏÑ±Ìôî
+    XIntc_Enable(&IntrController, TIMER0_INTR_ID);
+    XIntc_Enable(&IntrController, I2C_INTR_ID);
 
-	// 4. ∞¢∞¢¿« ¿Œ≈Õ∑¥∆Æ √§≥Œ »∞º∫»≠
-	XIntc_Enable(&IntrController, TIMER0_INTR_ID);
-	XIntc_Enable(&IntrController, I2C_INTR_ID);
+    // 5. MicroBlaze Exception Ï¥àÍ∏∞Ìôî Î∞è ÌôúÏÑ±Ìôî
+    Xil_ExceptionInit();
+    Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
+            (Xil_ExceptionHandler)XIntc_InterruptHandler,
+            &IntrController);
+    Xil_ExceptionEnable();
 
-	// 5.MicroBlaze¿« Exception √ ±‚»≠ π◊ »∞º∫»≠
-	Xil_ExceptionInit();
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
-			(Xil_ExceptionHandler)XIntc_InterruptHandler,
-			&IntrController);
-	Xil_ExceptionEnable();
-
-	return XST_SUCCESS;
-
+    return XST_SUCCESS;
 }
