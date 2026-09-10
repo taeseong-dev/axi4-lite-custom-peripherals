@@ -137,28 +137,37 @@ proc create_root_design { parentCell } {
   set TMR_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:TMR:1.0 TMR_0 ]
   set axi_spi_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:axi_spi:1.0 axi_spi_0 ]
   set axi_uartlite_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_uartlite:2.0 axi_uartlite_0 ]
+  set_property -dict [ list \
+   CONFIG.UARTLITE_BOARD_INTERFACE {usb_uart} \
+   CONFIG.USE_BOARD_FLOW {true} \
+ ] $axi_uartlite_0
   set clk_wiz_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_1 ]
+  set_property -dict [ list \
+   CONFIG.CLK_IN1_BOARD_INTERFACE {sys_clock} \
+   CONFIG.PRIM_SOURCE {Single_ended_clock_capable_pin} \
+   CONFIG.RESET_BOARD_INTERFACE {reset} \
+   CONFIG.USE_BOARD_FLOW {true} \
+ ] $clk_wiz_1
   set gpio8_upcnt_0 [ create_bd_cell -type ip -vlnv xilinx.com:user:gpio8_upcnt:1.0 gpio8_upcnt_0 ]
   set gpio8_upcnt_1 [ create_bd_cell -type ip -vlnv xilinx.com:user:gpio8_upcnt:1.0 gpio8_upcnt_1 ]
   set gpio8_upcnt_2 [ create_bd_cell -type ip -vlnv xilinx.com:user:gpio8_upcnt:1.0 gpio8_upcnt_2 ]
   set mdm_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:mdm:3.2 mdm_1 ]
   set microblaze_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:microblaze:11.0 microblaze_0 ]
   set_property -dict [ list \
+   CONFIG.C_DEBUG_ENABLED {1} \
    CONFIG.C_D_AXI {1} \
    CONFIG.C_D_LMB {1} \
-   CONFIG.C_DEBUG_ENABLED {1} \
-  CONFIG.C_I_LMB {1} \
+   CONFIG.C_I_LMB {1} \
  ] $microblaze_0
   set microblaze_0_axi_intc [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_intc:4.1 microblaze_0_axi_intc ]
   set_property -dict [ list \
-   CONFIG.C_HAS_FAST_INT {1} \
+   CONFIG.C_HAS_FAST {1} \
  ] $microblaze_0_axi_intc
   set microblaze_0_axi_periph [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_interconnect:2.1 microblaze_0_axi_periph ]
   set_property -dict [ list \
-   CONFIG.NUM_MI 7
-  ] $microblaze_0_axi_periph
-  set microblaze_0_local_memory [ create_bd_cell -type hier microblaze_0_local_memory ]
-  create_hier_cell_microblaze_0_local_memory [parent_bd_cell $microblaze_0_local_memory] $microblaze_0_local_memory
+   CONFIG.NUM_MI {7} \
+ ] $microblaze_0_axi_periph
+  create_hier_cell_microblaze_0_local_memory [current_bd_instance .] microblaze_0_local_memory
   set microblaze_0_xlconcat [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 microblaze_0_xlconcat ]
   set rst_clk_wiz_1_100M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_1_100M ]
   set_property -dict [ list \
@@ -167,7 +176,7 @@ proc create_root_design { parentCell } {
  ] $rst_clk_wiz_1_100M
   connect_bd_intf_net -intf_net axi_uartlite_0_UART [get_bd_intf_ports usb_uart] [get_bd_intf_pins axi_uartlite_0/UART]
   connect_bd_intf_net -intf_net microblaze_0_axi_dp [get_bd_intf_pins microblaze_0/M_AXI_DP] [get_bd_intf_pins microblaze_0_axi_periph/S00_AXI]
-  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M01_AXI [get_bd_intf_pins axi_spi_0/S00_AXI ] [get_bd_intf_pins microblaze_0_axi_periph/M01_AXI]
+  connect_bd_intf_net -intf_net microblaze_0_axi_periph_M01_AXI [get_bd_intf_pins axi_spi_0/S00_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M01_AXI]
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M02_AXI [get_bd_intf_pins axi_uartlite_0/S_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M02_AXI]
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M03_AXI [get_bd_intf_pins gpio8_upcnt_0/S00_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M03_AXI]
   connect_bd_intf_net -intf_net microblaze_0_axi_periph_M04_AXI [get_bd_intf_pins gpio8_upcnt_1/S00_AXI] [get_bd_intf_pins microblaze_0_axi_periph/M04_AXI]
