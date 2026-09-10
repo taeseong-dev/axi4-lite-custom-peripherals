@@ -25,7 +25,6 @@ Testbench Simulation 및 Master FPGA와 Slave FPGA 간 통신을 통해 Register
 
 ## Contents
 
-- [Project Structure](#project-structure)
 - [System Architecture](#system-architecture)
 - [AXI4-Lite Interface](#axi4-lite-interface)
   - [AXI4-Lite Protocol](#axi4-lite-protocol)
@@ -159,11 +158,6 @@ Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 
 
 AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Write하고, 각 단계의 Handshake를 확인하였습니다.
 
-<details>
-<summary>Register Access Sequence 보기</summary>
-
-<br>
-
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
 | 1 | `CR` Write | `0x0000_0220` | `CLK_DIV = 2`, `INTR_EN = 1` 설정 |
@@ -181,18 +175,11 @@ AXI4-Lite Register 접근을 통해 Slave Address `7'h12`에 Data `0x55`를 Writ
 
 > `CR |= Command Bit` 형태로 Command를 설정하므로 기존 `CLK_DIV`, `INTR_EN` 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
 
-</details>
-
 ##### I2C Read Simulation
 
 <img src="images/axi_i2c_read_sim.jpg" width="900">
 
 AXI4-Lite Register 접근을 통해 Slave Address `7'h12`로부터 1 Byte Data를 Read하고, 각 단계의 Handshake를 확인하였습니다.
-
-<details>
-<summary>Register Access Sequence 보기</summary>
-
-<br>
 
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
@@ -214,8 +201,6 @@ Slave Address는 `7'h12`이며, Read Bit `1`을 포함한 `0x25`를 전송하였
 1 Byte Read이므로 `ACK_IN = 1`로 설정하여 Data 수신 후 NACK을 전송하고, `RXDR`에서 `0x55`가 정상적으로 수신된 것을 확인하였습니다.
 
 > `START`, `WRITE`, `READ`, `STOP` Command는 `CR |= Command Bit` 형태로 설정하므로 기존 Control Register 값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
-
-</details>
 
 #### FPGA Test
 
@@ -331,11 +316,6 @@ Software와 Hardware의 역할을 Application, Driver, HAL, HW의 4개 Layer로 
 
 AXI4-Lite Register 접근을 통해 SPI Mode 0에서 1 Byte Full-Duplex Transfer를 수행하고, Register 접근과 송수신 Data를 확인하였습니다.
 
-<details>
-<summary>Register Access Sequence 보기</summary>
-
-<br>
-
 | 번호 | Register Access | Value | 동작 |
 |:---:|:---|:---|:---|
 | 1 | `CR` Write | `0x0000_0408` | `CLK_DIV = 4`, `INTR_EN = 1`, Mode 0 설정 |
@@ -349,8 +329,6 @@ AXI4-Lite Register 접근을 통해 SPI Mode 0에서 1 Byte Full-Duplex Transfer
 | 9 | `RXDR` Read | `0x0000_00A5` | 두 번째 수신 Data `0xA5` 확인 |
 
 > `CR |= START` 형태로 Transfer를 시작하므로 기존 `CLK_DIV`, `INTR_EN`, `CPOL`, `CPHA` 설정값을 유지하기 위한 Read-Modify-Write가 수행됩니다.
-
-</details>
 
 SPI는 Full-Duplex 방식으로 동작하므로 MOSI를 통한 송신과 MISO를 통한 수신이 동시에 수행됩니다.
 
